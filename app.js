@@ -10,12 +10,12 @@ var indexRouter = require("./routes/index");
 
 var app = express();
 
+app.use(cors({ origin: "*" }));
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(helmet());
 app.use(cookieParser());
-app.use(cors({ origin: "*" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 // Adds rate limiting
