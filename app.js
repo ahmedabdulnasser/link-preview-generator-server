@@ -10,7 +10,14 @@ var indexRouter = require("./routes/index");
 
 var app = express();
 
-app.use(cors({ origin: "*" }));
+app.use(
+  cors({
+    origin: "http://localhost:5000", // or your deployed frontend URL
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
