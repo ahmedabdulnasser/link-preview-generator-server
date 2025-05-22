@@ -4,7 +4,7 @@ var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 const helmet = require("helmet");
 const { rateLimit } = require("express-rate-limit");
-
+const cors = require("cors");
 var indexRouter = require("./routes/index");
 
 var app = express();
