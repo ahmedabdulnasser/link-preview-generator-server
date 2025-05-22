@@ -3,7 +3,6 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 const helmet = require("helmet");
-const cors = require("cors");
 const { rateLimit } = require("express-rate-limit");
 
 var indexRouter = require("./routes/index");
@@ -13,44 +12,35 @@ var app = express();
 // 1. Trust Railway's proxy
 app.enable("trust proxy");
 
-// 2. Apply rate limiter EXCLUDING OPTIONS requests
+// 2. Rate limiting (without CORS skip since we're disabling all CORS)
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  skip: (req) => req.method === "OPTIONS", // Skip preflight requests
 });
 
 app.use(limiter);
 
-// 3. Configure CORS middleware first
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
-
-// 4. HTTPS redirect middleware - must come after CORS
+// 3. DISABLE ALL CORS - Add these middleware
 app.use((req, res, next) => {
-  // Skip HTTPS redirect for all OPTIONS requests (preflight)
-  if (req.method === "OPTIONS") {
-    return next();
-  }
-
-  // In production, ensure HTTPS
-  if (process.env.NODE_ENV === "production") {
-    // Railway uses X-Forwarded-Proto header
-    if (req.headers["x-forwarded-proto"] !== "https") {
-      return res.redirect(`https://${req.headers.host}${req.url}`);
-    }
-  }
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   next();
 });
 
-// 5. Other standard middleware
+// Handle OPTIONS requests directly
+app.options("*", (req, res) => {
+  res.sendStatus(200);
+});
+
+// 4. Skip HTTPS redirect for all requests (including preflight)
+app.use((req, res, next) => {
+  next(); // Skip all redirects
+});
+
+// 5. Standard middleware
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
