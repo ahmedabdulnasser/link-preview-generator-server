@@ -15,8 +15,8 @@ app.enable("trust proxy");
 
 // 2. Apply rate limiter EXCLUDING OPTIONS requests
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // Limit each IP to 100 requests per windowMs
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skip: (req) => req.method === "OPTIONS", // Skip preflight requests
@@ -24,35 +24,33 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// 3. Configure CORS PROPERLY
+// 3. Configure CORS middleware first
 app.use(
   cors({
     origin: "*",
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
-    optionsSuccessStatus: 200, // Some legacy browsers choke on 204
   })
 );
 
-// 4. Explicitly handle OPTIONS for all routes
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  res.status(200).end();
-});
-
-// 5. Prevent automatic HTTPS redirects during preflight
+// 4. HTTPS redirect middleware - must come after CORS
 app.use((req, res, next) => {
+  // Skip HTTPS redirect for all OPTIONS requests (preflight)
   if (req.method === "OPTIONS") {
-    return next(); // Skip HTTPS redirect for preflight
+    return next();
   }
-  if (process.env.NODE_ENV === "production" && !req.secure) {
-    return res.redirect(`https://${req.headers.host}${req.url}`);
+
+  // In production, ensure HTTPS
+  if (process.env.NODE_ENV === "production") {
+    // Railway uses X-Forwarded-Proto header
+    if (req.headers["x-forwarded-proto"] !== "https") {
+      return res.redirect(`https://${req.headers.host}${req.url}`);
+    }
   }
   next();
 });
 
+// 5. Other standard middleware
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -60,6 +58,7 @@ app.use(helmet());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+// 6. Routes
 app.use("/", indexRouter);
 
 module.exports = app;
